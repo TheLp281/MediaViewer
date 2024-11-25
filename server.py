@@ -1,18 +1,22 @@
 from flask import Flask, send_from_directory, render_template_string, request, make_response
 import os
+import mimetypes
+
+
+
 
 app = Flask(__name__)
 
-ALLOWED_EXTENSIONS = {'mp4', 'png', 'jpg', 'jpeg', 'gif'}
 
 def get_files():
     files = []
     for root, _, filenames in os.walk("."):
         for filename in sorted(filenames):
-            if filename.split(".")[-1].lower() in ALLOWED_EXTENSIONS:
-                files.append(os.path.join(root, filename).replace("\\", "/"))
+            file_path = os.path.join(root, filename).replace("\\", "/")
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if mime_type and (mime_type.startswith("image/") or mime_type.startswith("video/") or mime_type.startswith("audio/")):
+                files.append(file_path)
     return sorted(files)
-
 @app.route('/')
 @app.route('/<int:index>')
 def index(index=0):
@@ -28,15 +32,6 @@ def serve_file(filename):
     file = os.path.basename(filename)
     return send_from_directory(directory, file)
 
-@app.after_request
-def add_cache_headers(response):
-    path = request.path
-    if path.startswith('/media/'):
-        filename = os.path.basename(path)
-        extension = filename.split('.')[-1].lower()
-        if extension in ALLOWED_EXTENSIONS:
-            response.headers['Cache-Control'] = 'public, max-age=31536000'
-    return response
 
 template = '''
 <!DOCTYPE html>
